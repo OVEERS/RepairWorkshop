@@ -50,7 +50,11 @@ local function pickBroken(player: Player): string?
 	if selected and Inventory.Get(player, "Broken", selected) > 0 then
 		return selected
 	end
-	for _, value in player.Broken:GetChildren() do
+	local broken = player:FindFirstChild("Broken")
+	if not broken then
+		return nil
+	end
+	for _, value in broken:GetChildren() do
 		if value:IsA("IntValue") and value.Value > 0 then
 			return value.Name
 		end

@@ -37,7 +37,12 @@ local function now(): number
 end
 
 local function reputation(player: Player): number
-	return player.leaderstats.Reputation.Value
+	local leaderstats = player:FindFirstChild("leaderstats")
+	local value = leaderstats and leaderstats:FindFirstChild("Reputation")
+	if not value or not value:IsA("IntValue") then
+		return 0
+	end
+	return math.max(0, value.Value)
 end
 
 local function slotsFor(player: Player): number
@@ -150,12 +155,18 @@ function OrderManager.Cleanup(player: Player)
 	counter[player] = nil
 end
 
-local function find(player: Player, orderId: number)
-	for index, o in orders[player] or {} do
+local function find(player: Player, orderId: number): (number?, any?)
+	local list = orders[player]
+	if not list then
+		return nil, nil
+	end
+	for index = 1, #list do
+		local o = list[index]
 		if o.id == orderId then
 			return index, o
 		end
 	end
+	return nil, nil
 end
 
 -- возвращает ok, сообщение
@@ -177,7 +188,11 @@ function OrderManager.Deliver(player: Player, orderId: number): (boolean, string
 
 	table.remove(orders[player], index)
 	Inventory.AddCoins(player, o.reward)
-	player.leaderstats.Reputation.Value += if o.rush then 2 else 1
+	local leaderstats = player:FindFirstChild("leaderstats")
+	local reputationValue = leaderstats and leaderstats:FindFirstChild("Reputation")
+	if reputationValue and reputationValue:IsA("IntValue") then
+		reputationValue.Value += if o.rush then 2 else 1
+	end
 	lastGen[player] = math.min(lastGen[player], os.clock() - GEN_INTERVAL + 10) -- новый заказ скоро
 	publish(player)
 	return true, ("%s доволен! +%d монет"):format(o.customer, o.reward)
