@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("ItemsConfig"))
+local UIKit = require(ReplicatedStorage:WaitForChild("UIKit"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
 local player = Players.LocalPlayer
@@ -11,14 +12,7 @@ local coins = player:WaitForChild("leaderstats"):WaitForChild("Coins")
 local WHITE = Color3.fromRGB(255, 255, 255)
 local GREY = Color3.fromRGB(150, 150, 160)
 
-local function new(class: string, props: { [string]: any }, parent: Instance?)
-	local inst: any = Instance.new(class)
-	for key, value in props do
-		inst[key] = value
-	end
-	inst.Parent = parent
-	return inst
-end
+local new = UIKit.new
 
 local gui =
 	new("ScreenGui", { Name = "ShopUI", ResetOnSpawn = false }, player:WaitForChild("PlayerGui"))
@@ -155,3 +149,5 @@ end
 Remotes.OpenShop.OnClientEvent:Connect(function()
 	frame.Visible = true
 end)
+
+UIKit.limitWidth(frame, 420)

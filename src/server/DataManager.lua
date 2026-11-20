@@ -69,6 +69,7 @@ local function serialize(player: Player)
 		Coins = 0,
 		Reputation = 0,
 		Orders = OrderManager.Get(player),
+		TutorialDone = player:GetAttribute("TutorialDone") == true,
 	}
 	local leaderstats = player:FindFirstChild("leaderstats")
 	if leaderstats then
@@ -100,6 +101,9 @@ end
 local function apply(player: Player, data)
 	if type(data) ~= "table" then
 		return
+	end
+	if data.TutorialDone == true then
+		player:SetAttribute("TutorialDone", true)
 	end
 	local leaderstats = player:FindFirstChild("leaderstats")
 	if leaderstats then

@@ -3,6 +3,7 @@ local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("ItemsConfig"))
+local UIKit = require(ReplicatedStorage:WaitForChild("UIKit"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
 local player = Players.LocalPlayer
@@ -249,3 +250,5 @@ Remotes.OpenOrders.OnClientEvent:Connect(function()
 end)
 
 render()
+
+UIKit.limitWidth(frame, 460)

@@ -98,4 +98,8 @@ Config.BaseCapacity = 10
 Config.CapacityPerLevel = 5
 Config.SpeedPerLevel = 0.1 -- -10% к времени удержания за уровень
 
+function Config.CapacityFor(capacityLevel: number): number
+	return Config.BaseCapacity + capacityLevel * Config.CapacityPerLevel
+end
+
 return Config

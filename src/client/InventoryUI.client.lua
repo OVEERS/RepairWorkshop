@@ -2,101 +2,131 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("ItemsConfig"))
+local UIKit = require(ReplicatedStorage:WaitForChild("UIKit"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+
+local new, T = UIKit.new, UIKit.Theme
 
 local player = Players.LocalPlayer
 local partsFolder = player:WaitForChild("Parts")
 local brokenFolder = player:WaitForChild("Broken")
 local repairedFolder = player:WaitForChild("Repaired")
+local capacityLevel = player:WaitForChild("Upgrades"):WaitForChild("Capacity")
 
--- ===== Каркас UI =====
-local gui = Instance.new("ScreenGui")
-gui.Name = "InventoryUI"
-gui.ResetOnSpawn = false
-gui.Parent = player:WaitForChild("PlayerGui")
+local ROW_HEIGHT = UIKit.isTouch() and 32 or 22
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.fromOffset(260, 0)
-frame.AutomaticSize = Enum.AutomaticSize.Y
-frame.AnchorPoint = Vector2.new(0, 0.5)
-frame.Position = UDim2.new(0, 16, 0.5, 0)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
-frame.BackgroundTransparency = 0.1
-frame.BorderSizePixel = 0
-frame.Parent = gui
+-- ===== Каркас =====
+local gui = new(
+	"ScreenGui",
+	{ Name = "InventoryUI", ResetOnSpawn = false },
+	player:WaitForChild("PlayerGui")
+)
 
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 10)
-corner.Parent = frame
+local frame = new("Frame", {
+	Size = UDim2.new(0.45, 0, 0, 0),
+	AutomaticSize = Enum.AutomaticSize.Y,
+	AnchorPoint = Vector2.new(0, 0.5),
+	Position = UDim2.new(0, 12, 0.5, 0),
+	BackgroundColor3 = T.Bg,
+	BackgroundTransparency = 0.1,
+	BorderSizePixel = 0,
+}, gui)
+UIKit.round(frame, 10)
+UIKit.pad(frame, 8, 12)
+new("UISizeConstraint", { MaxSize = Vector2.new(260, math.huge) }, frame)
+new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 4) }, frame)
 
-local padding = Instance.new("UIPadding")
-padding.PaddingTop = UDim.new(0, 10)
-padding.PaddingBottom = UDim.new(0, 10)
-padding.PaddingLeft = UDim.new(0, 12)
-padding.PaddingRight = UDim.new(0, 12)
-padding.Parent = frame
+local toggle = new("TextButton", {
+	Size = UDim2.new(1, 0, 0, 28),
+	BackgroundTransparency = 1,
+	Font = Enum.Font.GothamBold,
+	TextSize = 18,
+	TextColor3 = T.Text,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	LayoutOrder = 0,
+}, frame)
 
-local layout = Instance.new("UIListLayout")
-layout.SortOrder = Enum.SortOrder.LayoutOrder
-layout.Padding = UDim.new(0, 4)
-layout.Parent = frame
+local body = new("Frame", {
+	Size = UDim2.new(1, 0, 0, 0),
+	AutomaticSize = Enum.AutomaticSize.Y,
+	BackgroundTransparency = 1,
+	LayoutOrder = 1,
+}, frame)
+new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 4) }, body)
+
+local function setOpen(open: boolean)
+	body.Visible = open
+	toggle.Text = (open and "▾ " or "▸ ") .. "Мастерская"
+end
+toggle.Activated:Connect(function()
+	setOpen(not body.Visible)
+end)
+setOpen(not UIKit.isTouch()) -- на телефоне по умолчанию свёрнуто
 
 local function makeLabel(text: string, order: number, color: Color3, bold: boolean?)
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, 0, 0, 22)
-	label.BackgroundTransparency = 1
-	label.Font = bold and Enum.Font.GothamBold or Enum.Font.Gotham
-	label.TextSize = 16
-	label.TextColor3 = color
-	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.Text = text
-	label.LayoutOrder = order
-	label.Parent = frame
-	return label
+	return new("TextLabel", {
+		Size = UDim2.new(1, 0, 0, 22),
+		BackgroundTransparency = 1,
+		Font = bold and Enum.Font.GothamBold or Enum.Font.Gotham,
+		TextSize = 16,
+		TextColor3 = color,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Text = text,
+		LayoutOrder = order,
+	}, body)
 end
 
 local function makeRow(order: number)
-	local row = Instance.new("TextButton")
-	row.Size = UDim2.new(1, 0, 0, 22)
-	row.BackgroundTransparency = 1
-	row.AutoButtonColor = false
-	row.Font = Enum.Font.Gotham
-	row.TextSize = 16
-	row.TextColor3 = Color3.fromRGB(230, 230, 235)
-	row.TextXAlignment = Enum.TextXAlignment.Left
-	row.Text = ""
-	row.LayoutOrder = order
-	row.Parent = frame
-	return row
+	return new("TextButton", {
+		Size = UDim2.new(1, 0, 0, ROW_HEIGHT),
+		BackgroundTransparency = 1,
+		AutoButtonColor = false,
+		Font = Enum.Font.Gotham,
+		TextSize = 16,
+		TextColor3 = T.Text,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Text = "",
+		LayoutOrder = order,
+	}, body)
 end
 
-makeLabel("Мастерская", 0, Color3.fromRGB(255, 255, 255), true)
-local emptyLabel = makeLabel("Пусто", 1, Color3.fromRGB(140, 140, 150))
-local totalLabel = makeLabel("", 999, Color3.fromRGB(255, 214, 90), true)
+local emptyLabel =
+	makeLabel("Пока пусто. Загляни на станцию приёма", 1, T.TextDim)
+local totalLabel = makeLabel("", 999, T.Gold, true)
 
--- ===== Подсчёт =====
+-- ===== Подсчёты =====
+local function sumFolder(folder: Folder): number
+	local n = 0
+	for _, value in folder:GetChildren() do
+		if value:IsA("IntValue") then
+			n += value.Value
+		end
+	end
+	return n
+end
+
+local function capacity(): number
+	return Config.CapacityFor(capacityLevel.Value)
+end
+
 local function recalcTotal()
 	local total, count = 0, 0
 
 	for _, value in partsFolder:GetChildren() do
 		local info = Config.Parts[value.Name]
-		if info and value.Value > 0 then
+		if info and value:IsA("IntValue") and value.Value > 0 then
 			total += info.price * value.Value
 			count += 1
 		end
 	end
 	for _, value in repairedFolder:GetChildren() do
 		local info = Config.Items[value.Name]
-		if info and value.Value > 0 then
+		if info and value:IsA("IntValue") and value.Value > 0 then
 			total += info.sellPrice * value.Value
 			count += 1
 		end
 	end
-	for _, value in brokenFolder:GetChildren() do
-		if value.Value > 0 then
-			count += 1
-		end
-	end
+	count += sumFolder(brokenFolder) > 0 and 1 or 0
 
 	emptyLabel.Visible = count == 0
 	totalLabel.Visible = total > 0
@@ -104,33 +134,66 @@ local function recalcTotal()
 end
 
 -- ===== Секции =====
-local sections = {
+type Section = {
+	folder: Folder,
+	source: any,
+	clickable: boolean?,
+	alwaysShow: boolean?,
+	title: () -> string,
+	isFull: (() -> boolean)?,
+	refresh: (() -> ())?,
+}
+
+local sections: { Section } = {
 	{
 		folder = brokenFolder,
-		title = "Сломано (клик: выбрать)",
 		source = Config.Items,
 		clickable = true,
+		alwaysShow = true,
+		title = function()
+			return ("Сломано %d/%d  (клик: выбрать)"):format(
+				sumFolder(brokenFolder),
+				capacity()
+			)
+		end,
+		isFull = function()
+			return sumFolder(brokenFolder) >= capacity()
+		end,
 	},
-	{ folder = partsFolder, title = "Детали", source = Config.Parts },
-	{ folder = repairedFolder, title = "Починено", source = Config.Items },
+	{
+		folder = partsFolder,
+		source = Config.Parts,
+		title = function()
+			return "Детали"
+		end,
+	},
+	{
+		folder = repairedFolder,
+		source = Config.Items,
+		title = function()
+			return "Починено"
+		end,
+	},
 }
 
 for index, def in sections do
-	local header = makeLabel(def.title, index * 100, Color3.fromRGB(150, 160, 255), true)
-	header.Visible = false
-
+	local header = makeLabel("", index * 100, T.Accent, true)
 	local rows: { [string]: TextButton } = {}
 	local nextOrder = index * 100 + 1
 
 	local function refreshHeader()
-		header.Visible = false
+		local any = false
 		for _, row in rows do
 			if row.Visible then
-				header.Visible = true
-				return
+				any = true
+				break
 			end
 		end
+		header.Visible = any or def.alwaysShow == true
+		header.Text = def.title()
+		header.TextColor3 = if def.isFull and def.isFull() then T.Bad else T.Accent
 	end
+	def.refresh = refreshHeader
 
 	local function track(value: IntValue)
 		local info = def.source[value.Name]
@@ -144,7 +207,7 @@ for index, def in sections do
 
 			if def.clickable then
 				local id = value.Name
-				row.MouseButton1Click:Connect(function()
+				row.Activated:Connect(function()
 					Remotes.SelectItem:FireServer(id)
 				end)
 			end
@@ -154,8 +217,7 @@ for index, def in sections do
 			row.Visible = value.Value > 0
 			local selected = def.clickable and player:GetAttribute("Selected") == value.Name
 			row.Text = (selected and "▶ " or "") .. displayName .. "  x" .. value.Value
-			row.TextColor3 = selected and Color3.fromRGB(255, 214, 90)
-				or Color3.fromRGB(230, 230, 235)
+			row.TextColor3 = selected and T.Gold or T.Text
 			refreshHeader()
 			recalcTotal()
 		end
@@ -179,4 +241,14 @@ for index, def in sections do
 	end
 end
 
-recalcTotal()
+local function refreshAll()
+	for _, def in sections do
+		if def.refresh then
+			def.refresh()
+		end
+	end
+	recalcTotal()
+end
+
+capacityLevel.Changed:Connect(refreshAll)
+refreshAll()

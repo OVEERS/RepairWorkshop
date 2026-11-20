@@ -3,24 +3,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local Config = require(ReplicatedStorage.ItemsConfig)
+local RemoteNames = require(ReplicatedStorage.RemoteNames)
 local DataManager = require(ServerScriptService.DataManager)
 
--- RemoteEvent'ы создаём кодом
+-- RemoteEvent'ы создаём кодом из общего списка
 local remotes = Instance.new("Folder")
 remotes.Name = "Remotes"
-for _, name in
-	{
-		"SelectItem",
-		"Notify",
-		"StartRepair",
-		"RepairResult",
-		"OpenShop",
-		"BuyUpgrade",
-		"OpenOrders",
-		"DeliverOrder",
-		"DeclineOrder",
-	}
-do
+for _, name in RemoteNames do
 	local remote = Instance.new("RemoteEvent")
 	remote.Name = name
 	remote.Parent = remotes

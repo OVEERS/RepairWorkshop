@@ -6,6 +6,8 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local Config = require(ReplicatedStorage.ItemsConfig)
 local Inventory = require(ServerScriptService.Inventory)
 local OrderManager = require(ServerScriptService.OrderManager)
+local RateLimit = require(ServerScriptService.RateLimit)
+local Log = require(ServerScriptService.Log)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
@@ -21,8 +23,7 @@ local function notify(player: Player, text: string)
 end
 
 local function capacityOf(player: Player): number
-	return Config.BaseCapacity
-		+ Inventory.Get(player, "Upgrades", "Capacity") * Config.CapacityPerLevel
+	return Config.CapacityFor(Inventory.Get(player, "Upgrades", "Capacity"))
 end
 
 local function pickRandomItem(player: Player)
@@ -91,9 +92,13 @@ local function bindTag(tag: string, action: string, object: string, hold: number
 
 		prompt.Triggered:Connect(function(player)
 			if not player:GetAttribute("DataLoaded") then
+				notify(
+					player,
+					"Данные ещё загружаются. Попробуй через секунду."
+				)
 				return
 			end
-			callback(player)
+			Log.run("Station " .. tag, callback, player)
 		end)
 	end
 
@@ -105,6 +110,9 @@ end
 
 -- ===== Выбор предмета =====
 Remotes.SelectItem.OnServerEvent:Connect(function(player, itemId)
+	if not RateLimit.allow(player, "SelectItem", 0.1) then
+		return
+	end
 	if typeof(itemId) ~= "string" or not Config.Items[itemId] then
 		return
 	end
@@ -264,6 +272,9 @@ bindTag("Station_Upgrade", "Открыть", "Улучшения", 0.3, function
 end)
 
 Remotes.BuyUpgrade.OnServerEvent:Connect(function(player, id)
+	if not RateLimit.allow(player, "BuyUpgrade", 0.3) then
+		return
+	end
 	if not player:GetAttribute("DataLoaded") then
 		return
 	end
@@ -307,6 +318,9 @@ bindTag("Station_Orders", "Открыть", "Доска заказов", 0.3, fu
 end)
 
 Remotes.DeliverOrder.OnServerEvent:Connect(function(player, orderId)
+	if not RateLimit.allow(player, "DeliverOrder", 0.3) then
+		return
+	end
 	if not player:GetAttribute("DataLoaded") then
 		return
 	end
@@ -318,6 +332,9 @@ Remotes.DeliverOrder.OnServerEvent:Connect(function(player, orderId)
 end)
 
 Remotes.DeclineOrder.OnServerEvent:Connect(function(player, orderId)
+	if not RateLimit.allow(player, "DeclineOrder", 0.3) then
+		return
+	end
 	if not player:GetAttribute("DataLoaded") then
 		return
 	end
@@ -325,6 +342,18 @@ Remotes.DeclineOrder.OnServerEvent:Connect(function(player, orderId)
 		return
 	end
 	OrderManager.Decline(player, orderId)
+end)
+
+-- ===== Туториал =====
+Remotes.TutorialDone.OnServerEvent:Connect(function(player)
+	if not player:GetAttribute("DataLoaded") then
+		return
+	end
+	if player:GetAttribute("TutorialDone") then
+		return
+	end
+	player:SetAttribute("TutorialDone", true)
+	notify(player, "Обучение завершено. Удачи в мастерской!")
 end)
 
 Players.PlayerRemoving:Connect(function(player)

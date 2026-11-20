@@ -4,6 +4,7 @@ local RunService = game:GetService("RunService")
 local ContextActionService = game:GetService("ContextActionService")
 
 local Config = require(ReplicatedStorage:WaitForChild("ItemsConfig"))
+local UIKit = require(ReplicatedStorage:WaitForChild("UIKit"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
 local player = Players.LocalPlayer
@@ -193,3 +194,5 @@ local function play(itemId: string)
 end
 
 Remotes.StartRepair.OnClientEvent:Connect(play)
+
+UIKit.limitWidth(frame, 440)
