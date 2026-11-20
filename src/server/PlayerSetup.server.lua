@@ -5,6 +5,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local Config = require(ReplicatedStorage.ItemsConfig)
 local RemoteNames = require(ReplicatedStorage.RemoteNames)
 local DataManager = require(ServerScriptService.DataManager)
+local PlotManager = require(ServerScriptService.PlotManager)
 
 -- RemoteEvent'ы создаём кодом из общего списка
 local remotes = Instance.new("Folder")
@@ -17,6 +18,15 @@ end
 remotes.Parent = ReplicatedStorage
 
 local function setup(player: Player)
+	if player:FindFirstChild("leaderstats") then
+		return
+	end
+
+	if not PlotManager.Claim(player) then
+		player:Kick("Сервер заполнен. Зайди ещё раз.")
+		return
+	end
+
 	local leaderstats = Instance.new("Folder")
 	leaderstats.Name = "leaderstats"
 	leaderstats.Parent = player

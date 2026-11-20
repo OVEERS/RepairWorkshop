@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local UIKit = require(ReplicatedStorage:WaitForChild("UIKit"))
+local PlotUtil = require(ReplicatedStorage:WaitForChild("PlotUtil"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
 local new, T = UIKit.new, UIKit.Theme
@@ -85,7 +86,7 @@ local gui =
 	new("ScreenGui", { Name = "Tutorial", ResetOnSpawn = false }, player:WaitForChild("PlayerGui"))
 
 local frame = new("Frame", {
-	Size = UDim2.new(0.92, 0, 0, 0),
+	Size = UDim2.fromScale(0.92, 0),
 	AutomaticSize = Enum.AutomaticSize.Y,
 	AnchorPoint = Vector2.new(0.5, 0),
 	Position = UDim2.new(0.5, 0, 0, 84),
@@ -109,7 +110,7 @@ local title = new("TextLabel", {
 }, frame)
 
 local bodyText = new("TextLabel", {
-	Size = UDim2.new(1, 0, 0, 0),
+	Size = UDim2.fromScale(1, 0),
 	AutomaticSize = Enum.AutomaticSize.Y,
 	BackgroundTransparency = 1,
 	Font = Enum.Font.Gotham,
@@ -147,7 +148,8 @@ local function nearestTagged(tag: string): BasePart?
 	local best: BasePart? = nil
 	local bestDist = math.huge
 	for _, part in CollectionService:GetTagged(tag) do
-		if part:IsA("BasePart") then
+		local owner = PlotUtil.ownerOf(part)
+		if part:IsA("BasePart") and (owner == nil or owner == player.UserId) then
 			local dist = root and (part.Position - (root :: BasePart).Position).Magnitude or 0
 			if dist < bestDist then
 				best, bestDist = part, dist
@@ -269,5 +271,18 @@ coins.Changed:Connect(function(value)
 	end
 	lastCoins = value
 end)
+
+-- станция могла появиться после старта шага: перерисуем подсветку
+for _, step in steps do
+	local tag = step.tag
+	CollectionService:GetInstanceAddedSignal(tag):Connect(function()
+		task.defer(function()
+			local cur = steps[current]
+			if not finished and cur and cur.tag == tag then
+				render()
+			end
+		end)
+	end)
+end
 
 advance()

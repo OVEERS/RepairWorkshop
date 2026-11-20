@@ -8,6 +8,7 @@ local Inventory = require(ServerScriptService.Inventory)
 local OrderManager = require(ServerScriptService.OrderManager)
 local Log = require(ServerScriptService.Log)
 local Net = require(ServerScriptService.Net)
+local PlotUtil = require(ReplicatedStorage.PlotUtil)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
@@ -77,7 +78,11 @@ end
 -- вешает ProximityPrompt на все Part с тегом (и на те, что появятся позже)
 local function bindTag(tag: string, action: string, object: string, hold: number, callback)
 	local function setup(part: Instance)
-		if not part:IsA("BasePart") or part:FindFirstChild("StationPrompt") then
+		-- шаблон в ServerStorage не оживляем: промпт попал бы в клоны без обработчика
+		if not part:IsA("BasePart") or not part:IsDescendantOf(workspace) then
+			return
+		end
+		if part:FindFirstChild("StationPrompt") then
 			return
 		end
 
@@ -91,6 +96,12 @@ local function bindTag(tag: string, action: string, object: string, hold: number
 		prompt.Parent = part
 
 		prompt.Triggered:Connect(function(player)
+			-- чужая мастерская: у общих станций (площадь) владельца нет
+			local ownerId = PlotUtil.ownerOf(part)
+			if ownerId and ownerId ~= player.UserId then
+				notify(player, "Это чужая мастерская")
+				return
+			end
 			if not player:GetAttribute("DataLoaded") then
 				notify(
 					player,
@@ -105,7 +116,9 @@ local function bindTag(tag: string, action: string, object: string, hold: number
 	for _, part in CollectionService:GetTagged(tag) do
 		task.spawn(setup, part)
 	end
-	CollectionService:GetInstanceAddedSignal(tag):Connect(setup)
+	CollectionService:GetInstanceAddedSignal(tag):Connect(function(part)
+		task.defer(setup, part)
+	end)
 end
 
 -- ===== Выбор предмета =====
