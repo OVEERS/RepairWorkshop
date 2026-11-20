@@ -6,8 +6,8 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local Config = require(ReplicatedStorage.ItemsConfig)
 local Inventory = require(ServerScriptService.Inventory)
 local OrderManager = require(ServerScriptService.OrderManager)
-local RateLimit = require(ServerScriptService.RateLimit)
 local Log = require(ServerScriptService.Log)
+local Net = require(ServerScriptService.Net)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
@@ -109,10 +109,7 @@ local function bindTag(tag: string, action: string, object: string, hold: number
 end
 
 -- ===== Выбор предмета =====
-Remotes.SelectItem.OnServerEvent:Connect(function(player, itemId)
-	if not RateLimit.allow(player, "SelectItem", 0.1) then
-		return
-	end
+Net.on("SelectItem", 0.1, function(player, itemId)
 	if typeof(itemId) ~= "string" or not Config.Items[itemId] then
 		return
 	end
@@ -201,7 +198,7 @@ bindTag("Station_Repair", "Чинить", "Станция ремонта", 0.3, 
 end)
 
 -- ===== Ремонт (результат мини-игры) =====
-Remotes.RepairResult.OnServerEvent:Connect(function(player, hits)
+Net.on("RepairResult", 0.2, function(player, hits)
 	local session = repairing[player]
 	repairing[player] = nil
 	if not session then
@@ -271,13 +268,7 @@ bindTag("Station_Upgrade", "Открыть", "Улучшения", 0.3, function
 	Remotes.OpenShop:FireClient(player)
 end)
 
-Remotes.BuyUpgrade.OnServerEvent:Connect(function(player, id)
-	if not RateLimit.allow(player, "BuyUpgrade", 0.3) then
-		return
-	end
-	if not player:GetAttribute("DataLoaded") then
-		return
-	end
+Net.on("BuyUpgrade", 0.3, function(player, id)
 	if typeof(id) ~= "string" then
 		return
 	end
@@ -317,13 +308,7 @@ bindTag("Station_Orders", "Открыть", "Доска заказов", 0.3, fu
 	Remotes.OpenOrders:FireClient(player)
 end)
 
-Remotes.DeliverOrder.OnServerEvent:Connect(function(player, orderId)
-	if not RateLimit.allow(player, "DeliverOrder", 0.3) then
-		return
-	end
-	if not player:GetAttribute("DataLoaded") then
-		return
-	end
+Net.on("DeliverOrder", 0.3, function(player, orderId)
 	if typeof(orderId) ~= "number" then
 		return
 	end
@@ -331,13 +316,7 @@ Remotes.DeliverOrder.OnServerEvent:Connect(function(player, orderId)
 	notify(player, message)
 end)
 
-Remotes.DeclineOrder.OnServerEvent:Connect(function(player, orderId)
-	if not RateLimit.allow(player, "DeclineOrder", 0.3) then
-		return
-	end
-	if not player:GetAttribute("DataLoaded") then
-		return
-	end
+Net.on("DeclineOrder", 0.3, function(player, orderId)
 	if typeof(orderId) ~= "number" then
 		return
 	end
@@ -345,10 +324,7 @@ Remotes.DeclineOrder.OnServerEvent:Connect(function(player, orderId)
 end)
 
 -- ===== Туториал =====
-Remotes.TutorialDone.OnServerEvent:Connect(function(player)
-	if not player:GetAttribute("DataLoaded") then
-		return
-	end
+Net.on("TutorialDone", 1, function(player)
 	if player:GetAttribute("TutorialDone") then
 		return
 	end

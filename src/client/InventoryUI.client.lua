@@ -23,7 +23,7 @@ local gui = new(
 )
 
 local frame = new("Frame", {
-	Size = UDim2.new(0.45, 0, 0, 0),
+	Size = UDim2.fromScale(0.5, 0),
 	AutomaticSize = Enum.AutomaticSize.Y,
 	AnchorPoint = Vector2.new(0, 0.5),
 	Position = UDim2.new(0, 12, 0.5, 0),
@@ -33,7 +33,7 @@ local frame = new("Frame", {
 }, gui)
 UIKit.round(frame, 10)
 UIKit.pad(frame, 8, 12)
-new("UISizeConstraint", { MaxSize = Vector2.new(260, math.huge) }, frame)
+new("UISizeConstraint", { MaxSize = Vector2.new(300, math.huge) }, frame)
 new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 4) }, frame)
 
 local toggle = new("TextButton", {
@@ -47,7 +47,7 @@ local toggle = new("TextButton", {
 }, frame)
 
 local body = new("Frame", {
-	Size = UDim2.new(1, 0, 0, 0),
+	Size = UDim2.fromScale(1, 0),
 	AutomaticSize = Enum.AutomaticSize.Y,
 	BackgroundTransparency = 1,
 	LayoutOrder = 1,
@@ -56,7 +56,7 @@ new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new
 
 local function setOpen(open: boolean)
 	body.Visible = open
-	toggle.Text = (open and "▾ " or "▸ ") .. "Мастерская"
+	toggle.Text = (open and "- " or "+ ") .. "Мастерская"
 end
 toggle.Activated:Connect(function()
 	setOpen(not body.Visible)
@@ -65,11 +65,13 @@ setOpen(not UIKit.isTouch()) -- на телефоне по умолчанию с
 
 local function makeLabel(text: string, order: number, color: Color3, bold: boolean?)
 	return new("TextLabel", {
-		Size = UDim2.new(1, 0, 0, 22),
+		Size = UDim2.fromScale(1, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
 		Font = bold and Enum.Font.GothamBold or Enum.Font.Gotham,
-		TextSize = 16,
+		TextSize = 15,
 		TextColor3 = color,
+		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Text = text,
 		LayoutOrder = order,
@@ -85,13 +87,14 @@ local function makeRow(order: number)
 		TextSize = 16,
 		TextColor3 = T.Text,
 		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
 		Text = "",
 		LayoutOrder = order,
 	}, body)
 end
 
 local emptyLabel =
-	makeLabel("Пока пусто. Загляни на станцию приёма", 1, T.TextDim)
+	makeLabel("Пусто. Начни со станции приёма", 1, T.TextDim)
 local totalLabel = makeLabel("", 999, T.Gold, true)
 
 -- ===== Подсчёты =====
@@ -216,7 +219,7 @@ for index, def in sections do
 		local function update()
 			row.Visible = value.Value > 0
 			local selected = def.clickable and player:GetAttribute("Selected") == value.Name
-			row.Text = (selected and "▶ " or "") .. displayName .. "  x" .. value.Value
+			row.Text = (selected and "> " or "") .. displayName .. "  x" .. value.Value
 			row.TextColor3 = selected and T.Gold or T.Text
 			refreshHeader()
 			recalcTotal()

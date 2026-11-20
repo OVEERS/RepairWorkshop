@@ -1,3 +1,4 @@
+local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 
 local UIKit = {}
@@ -49,6 +50,77 @@ function UIKit.limitWidth(frame: GuiObject, maxWidth: number)
 		constraint.Parent = frame
 	end
 	constraint.MaxSize = Vector2.new(maxWidth, math.huge)
+end
+
+-- Готовое модальное окно: рамка + шапка с крестиком.
+-- Содержимое добавляй в w.frame с LayoutOrder >= 1.
+function UIKit.window(name: string, title: string, maxWidth: number)
+	local T = UIKit.Theme
+	local player = Players.LocalPlayer
+	local touch = UIKit.isTouch()
+
+	local gui = UIKit.new(
+		"ScreenGui",
+		{ Name = name, ResetOnSpawn = false },
+		player:WaitForChild("PlayerGui")
+	)
+
+	local frame = UIKit.new("Frame", {
+		Size = UDim2.fromScale(0.92, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		BackgroundColor3 = T.Bg,
+		BorderSizePixel = 0,
+		Visible = false,
+	}, gui)
+	UIKit.round(frame, 12)
+	UIKit.pad(frame, 12, 12)
+	UIKit.new("UISizeConstraint", { MaxSize = Vector2.new(maxWidth, math.huge) }, frame)
+	UIKit.new(
+		"UIListLayout",
+		{ SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 8) },
+		frame
+	)
+
+	local buttonSize = touch and 44 or 28
+	local header = UIKit.new("Frame", {
+		Size = UDim2.new(1, 0, 0, buttonSize),
+		BackgroundTransparency = 1,
+		LayoutOrder = 0,
+	}, frame)
+	UIKit.new("TextLabel", {
+		Size = UDim2.new(1, -(buttonSize + 8), 1, 0),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamBold,
+		TextSize = 20,
+		TextColor3 = T.Text,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Text = title,
+	}, header)
+	local close = UIKit.new("TextButton", {
+		Size = UDim2.fromOffset(buttonSize, buttonSize),
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.fromScale(1, 0),
+		BackgroundColor3 = T.Button,
+		Font = Enum.Font.GothamBold,
+		TextSize = 16,
+		TextColor3 = T.Text,
+		Text = "X",
+	}, header)
+	UIKit.round(close, 6)
+
+	local window = { gui = gui, frame = frame }
+
+	function window.show()
+		frame.Visible = true
+	end
+	function window.hide()
+		frame.Visible = false
+	end
+	close.Activated:Connect(window.hide)
+
+	return window
 end
 
 return UIKit

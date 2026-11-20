@@ -172,13 +172,13 @@ local function mark(part: BasePart)
 		StudsOffset = Vector3.new(0, part.Size.Y / 2 + 3, 0),
 		AlwaysOnTop = true,
 	}, part)
-	new("TextLabel", {
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
-		Text = "▼",
-		Font = Enum.Font.GothamBold,
-		TextSize = 40,
-		TextColor3 = T.Gold,
+	new("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(26, 26),
+		Rotation = 45,
+		BackgroundColor3 = T.Gold,
+		BorderSizePixel = 0,
 	}, billboard)
 
 	TweenService:Create(
