@@ -10,4 +10,6 @@ return {
 	"DeliverOrder",
 	"DeclineOrder",
 	"TutorialDone",
+	"TutorialDone",
+	"AdminCommand",
 }

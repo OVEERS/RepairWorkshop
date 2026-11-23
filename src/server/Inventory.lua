@@ -1,5 +1,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
+
 local Config = require(ReplicatedStorage.ItemsConfig)
+local PlayerData = require(ServerScriptService.PlayerData)
 
 local Inventory = {}
 local MAX_INT_VALUE = 2147483647
@@ -20,72 +23,59 @@ local function positiveAmount(amount: any): number?
 	return clean
 end
 
--- folderName: "Parts" | "Broken" | "Repaired"
-function Inventory.Get(player: Player, folderName: string, id: string): number
-	local folder = player:FindFirstChild(folderName)
-	local value = folder and folder:FindFirstChild(id)
-	if not value or not value:IsA("IntValue") then
-		return 0
+local function folderData(player: Player, folderName: string): { [string]: number }?
+	local data = PlayerData.Get(player)
+	local t = data and data[folderName]
+	if type(t) ~= "table" then
+		return nil
 	end
-	return math.max(0, positiveAmount(value.Value) or 0)
+	return t
+end
+
+-- folderName: "Parts" | "Broken" | "Repaired" | "Upgrades"
+function Inventory.Get(player: Player, folderName: string, id: string): number
+	local t = folderData(player, folderName)
+	return t and t[id] or 0
 end
 
 function Inventory.Count(player: Player, folderName: string): number
-	local folder = player:FindFirstChild(folderName)
+	local t = folderData(player, folderName)
 	local total = 0
-	if folder then
-		for _, value in folder:GetChildren() do
-			if value:IsA("IntValue") then
-				total += math.max(0, positiveAmount(value.Value) or 0)
-			end
+	if t then
+		for _, amount in t do
+			total += amount
 		end
 	end
 	return total
 end
 
 function Inventory.Add(player: Player, folderName: string, id: string, amount: number)
-	if typeof(player) ~= "Instance" or type(folderName) ~= "string" or type(id) ~= "string" then
+	if type(folderName) ~= "string" or type(id) ~= "string" then
 		return
 	end
 	local clean = positiveAmount(amount)
-	if not clean then
+	local t = folderData(player, folderName)
+	if not clean or not t then
 		return
 	end
-
-	local folder = player:FindFirstChild(folderName)
-	if not folder then
-		return
-	end
-
-	local value = folder:FindFirstChild(id)
-	if value then
-		if value:IsA("IntValue") then
-			value.Value = math.min(MAX_INT_VALUE, value.Value + clean)
-		end
-	else
-		value = Instance.new("IntValue")
-		value.Name = id
-		value.Value = math.min(MAX_INT_VALUE, clean)
-		value.Parent = folder
-	end
+	local new = math.min(MAX_INT_VALUE, (t[id] or 0) + clean)
+	t[id] = new
+	PlayerData.SetMirror(player, folderName, id, new)
 end
 
 function Inventory.Remove(player: Player, folderName: string, id: string, amount: number): boolean
 	local clean = positiveAmount(amount)
-	if not clean then
+	local t = folderData(player, folderName)
+	if not clean or not t then
 		return false
 	end
-
-	local folder = player:FindFirstChild(folderName)
-	if not folder then
+	local have = t[id] or 0
+	if have < clean then
 		return false
 	end
-	local value = folder:FindFirstChild(id)
-	if not value or not value:IsA("IntValue") or value.Value < clean then
-		return false
-	end
-
-	value.Value -= clean
+	local left = have - clean
+	t[id] = if left > 0 then left else nil
+	PlayerData.SetMirror(player, folderName, id, left)
 	return true
 end
 
@@ -117,7 +107,6 @@ function Inventory.Spend(player: Player, folderName: string, costs: { [string]: 
 			return false
 		end
 	end
-
 	for id, amount in costs do
 		local clean = positiveAmount(amount)
 		if clean and not Inventory.Remove(player, folderName, id, clean) then
@@ -127,46 +116,68 @@ function Inventory.Spend(player: Player, folderName: string, costs: { [string]: 
 	return true
 end
 
+-- ===== Монеты и репутация =====
+function Inventory.GetCoins(player: Player): number
+	local data = PlayerData.Get(player)
+	return data and data.Coins or 0
+end
+
 function Inventory.AddCoins(player: Player, amount: number)
 	local clean = positiveAmount(amount)
-	if not clean then
+	local data = PlayerData.Get(player)
+	if not clean or not data then
 		return
 	end
-	local leaderstats = player:FindFirstChild("leaderstats")
-	local coins = leaderstats and leaderstats:FindFirstChild("Coins")
-	if coins and coins:IsA("IntValue") then
-		coins.Value = math.min(MAX_INT_VALUE, coins.Value + clean)
+	data.Coins = math.min(MAX_INT_VALUE, data.Coins + clean)
+	PlayerData.SetStat(player, "Coins", data.Coins)
+end
+
+function Inventory.SpendCoins(player: Player, amount: number): boolean
+	local clean = positiveAmount(amount)
+	local data = PlayerData.Get(player)
+	if not clean or not data or data.Coins < clean then
+		return false
 	end
+	data.Coins -= clean
+	PlayerData.SetStat(player, "Coins", data.Coins)
+	return true
+end
+
+function Inventory.GetReputation(player: Player): number
+	local data = PlayerData.Get(player)
+	return data and data.Reputation or 0
+end
+
+function Inventory.AddReputation(player: Player, amount: number)
+	local clean = positiveAmount(amount)
+	local data = PlayerData.Get(player)
+	if not clean or not data then
+		return
+	end
+	data.Reputation = math.min(MAX_INT_VALUE, data.Reputation + clean)
+	PlayerData.SetStat(player, "Reputation", data.Reputation)
 end
 
 -- продаёт детали и починенные предметы
 function Inventory.SellAll(player: Player): number
 	local total = 0
 
-	local parts = player:FindFirstChild("Parts")
+	local parts = folderData(player, "Parts")
 	if parts then
-		for _, value in parts:GetChildren() do
-			if not value:IsA("IntValue") then
-				continue
-			end
-			local info = Config.Parts[value.Name]
-			if info and value.Value > 0 then
-				total += info.price * value.Value
-				value.Value = 0
+		for id, amount in parts do
+			local info = Config.Parts[id]
+			if info and Inventory.Remove(player, "Parts", id, amount) then
+				total += info.price * amount
 			end
 		end
 	end
 
-	local repaired = player:FindFirstChild("Repaired")
+	local repaired = folderData(player, "Repaired")
 	if repaired then
-		for _, value in repaired:GetChildren() do
-			if not value:IsA("IntValue") then
-				continue
-			end
-			local info = Config.Items[value.Name]
-			if info and value.Value > 0 then
-				total += info.sellPrice * value.Value
-				value.Value = 0
+		for id, amount in repaired do
+			local info = Config.Items[id]
+			if info and Inventory.Remove(player, "Repaired", id, amount) then
+				total += info.sellPrice * amount
 			end
 		end
 	end

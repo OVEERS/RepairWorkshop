@@ -9,6 +9,7 @@ local OrderManager = require(ServerScriptService.OrderManager)
 local Log = require(ServerScriptService.Log)
 local Net = require(ServerScriptService.Net)
 local PlotUtil = require(ReplicatedStorage.PlotUtil)
+local PlayerData = require(ServerScriptService.PlayerData)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
@@ -301,17 +302,11 @@ Net.on("BuyUpgrade", 0.3, function(player, id)
 		notify(player, "Ошибка конфигурации улучшения")
 		return
 	end
-	local leaderstats = player:FindFirstChild("leaderstats")
-	local coins = leaderstats and leaderstats:FindFirstChild("Coins")
-	if not coins or not coins:IsA("IntValue") then
-		return
-	end
-	if coins.Value < cost then
+	if not Inventory.SpendCoins(player, cost) then
 		notify(player, "Не хватает монет: нужно " .. cost)
 		return
 	end
 
-	coins.Value -= cost
 	Inventory.Add(player, "Upgrades", id, 1)
 	notify(player, ("Улучшено: %s → ур. %d"):format(def.name, level + 1))
 end)
@@ -338,9 +333,11 @@ end)
 
 -- ===== Туториал =====
 Net.on("TutorialDone", 1, function(player)
-	if player:GetAttribute("TutorialDone") then
+	local data = PlayerData.Get(player)
+	if not data or data.TutorialDone then
 		return
 	end
+	data.TutorialDone = true
 	player:SetAttribute("TutorialDone", true)
 	notify(player, "Обучение завершено. Удачи в мастерской!")
 end)
